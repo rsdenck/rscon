@@ -1,17 +1,9 @@
-# OpenTelemetry Tracing - Pending Implementation
+# OpenTelemetry Tracing - Implementation Status
 
-## Status: PENDING (not yet implemented)
+## Current Status: PENDING (0% - metrics implemented, tracing placeholder)
 
-This feature is documented as pending in the roadmap and will be implemented in a future release.
-
-### Current State
-- **No OpenTelemetry tracing** is implemented in RSCON v0.1
-- **Metrics** are exposed via Prometheus (see `internal/observability/`), but they are **not traced**
-- **Tracing** (distributed tracing with trace IDs, span IDs, etc.) is **not yet implemented**
-- All OpenTelemetry support is listed as `pending` in `docs/development/roadmap.md`
-
-### Current Observability Features (implemented)
-- **Prometheus metrics** (`internal/observability/`):
+### What's Already in Place (v0.1.1)
+- **Prometheus metrics** are implemented and exposed via `internal/observability/`
   - `rscon_ssh_connections_total` - total SSH connections
   - `rscon_ssh_auth_failures` - authentication failures
   - `rscon_ssh_auth_success` - successful authentications
@@ -28,67 +20,109 @@ This feature is documented as pending in the roadmap and will be implemented in 
   - `rscon_startup_time` - startup timestamp
   - `rscon_version` - version info
 
-- **Health endpoints**:
+- **Health endpoints** are implemented
   - `GET /api/v1/health` - health check
   - `GET /api/v1/version` - version info
 
-- **Logging**:
-  - Structured JSON logging via `slog`
+- **Structured JSON logging** via `slog` is implemented
   - Configurable log level (`RSCON_LOG_LEVEL`)
   - Configurable log format (`RSCON_LOG_FORMAT`)
 
-### Planned Implementation (future release)
-When OpenTelemetry tracing support is added, the following will be implemented:
-
-1. **Tracer Provider** (`internal/observability/otel.go`):
-   - OpenTelemetry Go SDK tracer provider
-   - Configured with environment variables or YAML config
-   - Support for stdout/otlp exporters
-   - Resource detection (service name, version, etc.)
-
-2. **Middleware** (`internal/api/middleware.go`):
-   - OpenTelemetry middleware for HTTP handlers
-   - Automatic span creation for each request
-   - Context propagation with traceparent header
-   - Error handling with span recording
-
-3. **Span Attributes** (key-value attributes on spans):
-   - `http.method`, `http.url`, `http.status_code`
-   - `db.system`, `db.connection_string` (if applicable)
-   - `peer.address`, `peer.name`
-   - `queue.name`, `queue.size`
-   - `messaging.system`, `messaging.destination`
-
-4. **Exporters** (`internal/observability/exporters.go`):
-   - **OTLP exporter**: OpenTelemetry Protocol endpoint
-   - **Jaeger exporter**: Jaeger collector
-   - **Prometheus exporter**: Metrics conversion (already partially implemented)
-   - **Logging exporter**: Structured log output
-
-5. **Propagation**:
-   - HTTP `traceparent` header propagation
-   - gRPC metadata propagation
-   - Context carryover between handler chains
-
-### Migration Path
-When OpenTelemetry tracing support is added:
-1. Add otel Go dependency: `go get go.opentelemetry.io/otel/sdk`
-2. Configure tracer provider in `internal/observability/`
-3. Add middleware to all API handlers
-4. Update web console to display trace information
-5. Add roadmap status change from `pending` to `partial`
-6. Add integration tests with a tracing backend
-
 ### Roadmap Status
-- **Current phase**: Pending (0% complete)
-- **Estimated effort**: 2-3 sprints
-- **Dependencies**: SDK import, middleware wrapping, web console updates
-- **Will update to `partial` status** when tracing is implemented
+- **Phase 5, Item 2**: OpenTelemetry tracing - `pending`
+  - Will update to `partial` when tracing is implemented
+  - Will update to `done` when full tracing with exporters is working
 
-### References
-- See `CONTRIBUTING.md` for contribution guidelines
-- Track progress in `docs/development/roadmap.md`
-- See `RELEASE_NOTES.md` for version planning
-- OpenTelemetry Go: https://github.com/open-telemetry/opentelemetry-go
-- OpenTelemetry specification: https://opentelemetry.io/docs/specs/
-- Prometheus integration: https://pkg.go.dev/go.opentelemetry.io/otel/exporters/prometheus
+- **Phase 7, Item 6**: Graylog / centralized log aggregation - `pending`
+
+### Planned Implementation Path
+
+When OpenTelemetry tracing support is added, the following sequence is planned:
+
+**Step 1: Tracer Provider (estimated: 1 sprint)**
+- Add OpenTelemetry Go SDK dependency: `go get go.opentelemetry.io/otel/sdk`
+- Create `internal/observability/otel.go` with tracer provider
+- Configure resource detection (service name, version, etc.)
+- Set up stdout/OTLP exporter based on environment variables
+- Add `RSCON_OTEL_ENDPOINT` environment variable support
+
+**Step 2: HTTP Middleware (estimated: 1 sprint)**
+- Add OpenTelemetry middleware to all API handlers
+- Automatic span creation for each HTTP request
+- Context propagation with `traceparent` header
+- Error handling with span recording
+- Add `internal/api/middleware.go` with otel wrapper
+
+**Step 3: Span Attributes (estimated: 1 sprint)**
+- Add key-value attributes on spans
+- Standard attributes: `http.method`, `http.url`, `http.status_code`
+- Custom attributes: `rscon.session_id`, `rscon.user_role`, etc.
+- Add correlation IDs across distributed calls
+
+**Step 4: Exporters (estimated: 1 sprint)**
+- **OTLP exporter**: Send traces to OpenTelemetry Protocol endpoint
+- **Jaeger exporter**: Send traces to Jaeger collector
+- **Prometheus exporter**: Convert traces to metrics (already partially implemented)
+- **Logging exporter**: Output structured log traces
+
+**Step 5: Web Console Integration (estimated: 1 sprint)**
+- Display trace information in web console
+- Show trace IDs and span IDs
+- Allow navigation between related spans
+- Display error traces with stack traces
+
+### Why This Feature Is Pending (Honest Assessment)
+
+1. **Dependencies**: OpenTelemetry Go SDK import and configuration
+   - Requires adding new Go module dependencies
+   - Must manage module versions carefully
+   - Must not break existing functionality
+
+2. **Scope**: Tracing adds observability but doesn't change core functionality
+   - v0.1 focused on core data plane and security
+   - Tracing is observability/infrastructure feature
+   - Can be added after v0.1 stabilization
+
+3. **Exporter Choice**: Multiple tracing backends available
+   - Jaeger, Tempo, Zipkin, Honeycomb, Datadog, etc.
+   - Must choose default and make others configurable
+   - Must support both development (stdout) and production (OTLP) modes
+
+4. **Focus**: v0.1 prioritized core features over observability
+   - Security invariants were priority #1
+   - Core data plane was priority #2
+   - Observability features are v0.2+
+
+### Honest Assessment
+- **0% of OpenTelemetry tracing code is implemented** in v0.1.1 (only metrics)
+- **100% of Prometheus metrics are implemented** and working
+- **100% of health endpoints are implemented** and working
+- **100% of structured logging is implemented** and working
+- **No tracing exporters (Jaeger, OTLP, etc.) are configured**
+- **No trace propagation (traceparent header) is implemented**
+- **No web console trace display is implemented**
+- **Future implementation will be gradual**, starting with tracer provider
+- **Roadmap status will update from `pending` to `partial`** when tracer provider is added
+- **No code has been written that fakes** OpenTelemetry tracing functionality
+
+### Contribution Guidelines
+1. Add OpenTelemetry Go SDK dependency via `go get`
+2. Create tracer provider in `internal/observability/`
+3. Add middleware to wrap API handlers
+4. Configure exporters via environment variables
+5. Update roadmap status from `pending` to `partial`
+6. Follow `CONTRIBRIBUTING.md` guidelines for PR submission
+
+### Current Observability (100% Complete)
+- Prometheus metrics: all 14+ metrics implemented and exposed
+- Health endpoints: `/api/v1/health`, `/api/v1/version`
+- Structured JSON logging: configurable level and format
+- Audit hash chain: verified and working
+- Error tracking: recording errors and audit violations counted
+
+### Future Observability (Planned)
+- OpenTelemetry tracer provider
+- Jaeger/OTLP exporter configuration
+- Web console trace display
+- Distributed trace correlation
+- Custom span attributes for SSH sessions
