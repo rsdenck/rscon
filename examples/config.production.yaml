@@ -1,0 +1,104 @@
+# RSCON Production Configuration
+# Vault-enabled, default-deny, no file COA.
+
+server:
+  name: rscond-prod
+  environment: production
+  ssh_address: 0.0.0.0:2222
+  api_address: 127.0.0.1:8080
+  public_url: https://bastion.corp.example.com
+  tls_cert_file: /etc/rscon/fullchain.pem
+  tls_key_file: /etc/rscon/privkey.pem
+  shutdown_timeout: 30s
+
+database:
+  url: postgres://rscon:rscon@localhost:5432/rscon?sslmode=disable
+  url_env: RSCON_DATABASE_URL
+  max_connections: 20
+  min_connections: 2
+  connect_timeout: 10s
+
+vault:
+  enabled: true
+  address: https://vault.example.com:8200
+  namespace: admin
+  ssh_mount: ssh-client-signer
+  signing_role: rscon-users
+  ca_cache_ttl: 5m
+  timeout: 10s
+  allow_insecure_http: false
+  auth:
+    method: approle
+    role_id_file: /etc/rscon/vault_role_id
+    secret_id_file: /etc/rscon/vault_secret_id
+
+auth:
+  bootstrap:
+    username: admin
+    password_env: RSCON_BOOTSTRAP_ADMIN_PASSWORD
+  session_ttl: 8h
+  login_rate_limit: 10
+  login_rate_window: 1m
+  lockout_threshold: 5
+  lockout_duration: 15m
+
+ssh:
+  host_key_files:
+    - /etc/rscon/ssh_host_ed25519_key
+  gateway_key_file: /var/lib/rscon/gateway_ed25519
+  certificate_ttl: 10m
+  max_certificate_ttl: 1h
+  destination_certificate_ttl: 15m
+  max_session_duration: 8h
+  idle_timeout: 30m
+  dial_timeout: 10s
+  handshake_timeout: 30s
+  max_concurrent_sessions: 5
+  max_auth_tries: 3
+  allow_local_key_auth: false
+  allow_tcp_forwarding: false
+  allow_sftp: false
+
+host_keys:
+  known_hosts_file: /etc/rscon/known_hosts
+  trusted_host_ca_files: []
+  require_verification: true
+
+recording:
+  enabled: true
+  fail_closed: true
+  backend: filesystem
+  directory: /var/lib/rscon/recordings
+  retention: 90h
+  max_file_bytes: 256M
+
+audit:
+  require_persist: true
+  syslog:
+    enabled: true
+    network: udp
+    address: rslog.example.com:514
+    format: json
+
+api:
+  rate_limit_per_minute: 600
+  max_body_bytes: 1048576
+  trusted_proxy_cidrs:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+  cors_allowed_origins: []
+  allow_self_approval: false
+
+security:
+  default_deny: true
+
+log:
+  level: info
+  format: json
+
+dev:
+  insecure_file_ca: false
+  # file_ca_key_file is required when vault is disabled; left empty when Vault enabled
+
+# End of production configuration

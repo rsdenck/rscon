@@ -1,0 +1,30 @@
+# systemd unit for RSCON daemon (rscond)
+# Copy to /etc/systemd/system/rscond.service and enable/start
+
+[Unit]
+Description=RSCON Secure Infrastructure Access Daemon
+After=network.target postgresql.service
+Wants=postgresql.service
+ConditionPathExists=/etc/rscon/config.yaml
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/rscond -config /etc/rscon/config.yaml
+ExecReload=/bin/kill -HMAIN PID
+Restart=on-failure
+RestartSec=5
+# Hardening
+LimitNOFILE=65536
+AmbientCapabilities=AUDIT_WRITE
+# Restrict filesystem access
+ProtectSystem=full
+ReadWritePaths=/var/lib/rscon /var/log/rscon /etc/rscon
+# Read-only paths for certs and configs
+RTCRuntime=yes
+# Secure computing mode
+NoNewPrivileges=yes
+# Core dump limit
+CoreDumpLimit=0
+
+[Install]
+WantedBy=multi-user.target
