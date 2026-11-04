@@ -98,14 +98,14 @@ Status legend: **done**, **partial**, **pending**.
 | Metric | Value |
 |--------|-------|
 | Phases completed | 7 of 7 (100%) |
-| Features implemented | 92+ of ~100 |
+| Features implemented | 94+ of ~100 |
 | Test coverage | 5/5 packages pass |
 | `go build ./...` | PASS |
 | `go vet ./...` | PASS |
 | Security invariants | All enforced |
-| Pending items | 5 documented items |
+| Pending items | 6 documented items |
 
-**RSCON v0.1.1** — 92% complete, production-ready core, pending items honestly documented.
+**RSCON v0.1.1** — 94% complete, production-ready core, pending items honestly documented.
 
 ---\n
 
