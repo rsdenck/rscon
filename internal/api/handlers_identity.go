@@ -16,6 +16,97 @@ import (
 	"github.com/rsdenck/rscon/internal/store"
 )
 
+var oidcStateStore = make(map[string]string)
+
+func (s *Server) oidcLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	clientID := s.cfg.OIDCClientID
+	authURLValue := s.cfg.OIDCAuthURL
+	tokenURL := s.cfg.OIDCTokenURL
+	redirectURL := s.cfg.OIDCRedirectURL
+
+	if clientID == "" || authURLValue == "" || tokenURL == "" || redirectURL == "" {
+		writeError(w, http.StatusInternalServerError, "OIDC not configured")
+		return
+	}
+
+	// Generate PKCE
+	verifier, challenge := identity.PKCE()
+
+	// Generate state
+	state := identity.NewID()[:16]
+
+	// Store state -> verifier mapping for callback
+	oidcStateStore[state] = verifier
+
+	// Build authorization URL
+	authURL, err := identity.OIDCAuthorizationURL(
+		authURLValue,
+		clientID,
+		redirectURL,
+		state,
+		verifier,
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not build authorization URL")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"authorization_url": authURL.String(),
+		"state":             state,
+		"code_challenge":    challenge,
+		"code_challenge_method": "S256",
+	})
+}
+
+func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	// Exchange authorization code for tokens
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+	if code == "" || state == "" {
+		writeError(w, http.StatusBadRequest, "missing code or state parameter")
+		return
+	}
+
+	// Look up stored verifier for this state
+	codeVerifier, ok := oidcStateStore[state]
+	if !ok {
+		writeError(w, http.StatusBadRequest, "invalid or expired state")
+		return
+	}
+	// Remove used state
+	delete(oidcStateStore, state)
+
+	// Exchange code + verifier for tokens
+	// TODO: Implement actual token exchange with the OIDC provider
+	// body := url.Values{
+	//     "grant_type": "authorization_code",
+	//     "client_id":  cfg.ClientID,
+	//     "code":       code,
+	//     "code_verifier": codeVerifier,
+	//     "redirect_uri": cfg.RedirectURL,
+	// }
+	// resp, err := http.PostForm(cfg.TokenURL, body)
+	// etc.
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":   "oidc login in progress",
+		"code":     code,
+		"state":    state,
+		"verifier": codeVerifier,
+	})
+}
+
 var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,63}$`)
 
 func (s *Server) listUsers(w http.ResponseWriter, r *http.Request, _ *model.User, _ model.Principal) {

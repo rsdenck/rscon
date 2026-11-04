@@ -7,11 +7,20 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/rsdenck/rscon/internal/audit"
 	"github.com/rsdenck/rscon/internal/authz"
 	"github.com/rsdenck/rscon/internal/model"
 	"github.com/rsdenck/rscon/internal/store"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 func canViewAllSessions(p model.Principal) bool {
 	return p.Permissions["*"] || p.HasPermission(authz.ActionSessionTerminate) || p.HasPermission(authz.ActionAuditRead)
@@ -69,6 +78,46 @@ func (s *Server) terminateSession(w http.ResponseWriter, r *http.Request, actor 
 	s.auditEvent(r, audit.CategorySession, "session.terminate_requested", audit.ResultSuccess, actor,
 		"session termination requested", map[string]any{"session_id": id, "local": local, "owner": session.Gateway})
 	writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "local": local})
+}
+
+func (s *Server) terminalWS(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.PathValue("id")
+
+	// Upgrade to WebSocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		s.log.Error("terminal WebSocket upgrade failed", "session_id", sessionID, "error", err)
+		writeError(w, http.StatusBadRequest, "websocket upgrade failed")
+		return
+	}
+	defer conn.Close()
+
+	s.log.Info("terminal WebSocket connected", "session_id", sessionID)
+
+	// TODO: Stream SSH output from the session gateway
+	// For now, send a placeholder until the gateway integration is complete
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		default:
+			// Poll for session status/output
+			session, err := s.store.GetSession(r.Context(), sessionID)
+			if err != nil {
+				s.log.Error("get session failed", "session_id", sessionID, "error", err)
+				conn.WriteMessage(1, []byte("error: unable to fetch session"))
+				return
+			}
+			if session.Status != model.SessionActive {
+				conn.WriteMessage(1, []byte("session ended"))
+				return
+			}
+			// Send a keepalive/prompt message
+			conn.WriteMessage(1, []byte("\n$ "))
+			// Wait a bit before next poll
+			time.Sleep(2 * time.Second)
+		}
+	}
 }
 
 func (s *Server) downloadRecording(w http.ResponseWriter, r *http.Request, actor *model.User, principal model.Principal) {

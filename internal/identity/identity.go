@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -103,4 +104,41 @@ func VerifyPassword(password, encoded string) bool {
 	}
 	got := argon2.IDKey([]byte(password), salt, timeCost, memory, threads, uint32(len(want)))
 	return subtle.ConstantTimeCompare(got, want) == 1
+}
+
+// PKCE generates a code verifier and challenge for OIDC authorization requests.
+// The verifier must be stored server-side and passed to the callback endpoint for token exchange.
+// Returns (verifier, challenge) where both are base64url-encoded strings.
+func PKCE() (verifier string, challenge string) {
+	verifierBytes := make([]byte, 32)
+	if _, err := rand.Read(verifierBytes); err != nil {
+		panic("identity: PKCE verifier generation failed: " + err.Error())
+	}
+	verifier = base64.RawURLEncoding.EncodeToString(verifierBytes)
+
+	challengeBytes := sha256.Sum256([]byte(verifier))
+	challenge = base64.RawURLEncoding.EncodeToString(challengeBytes[:])
+	return verifier, challenge
+}
+
+// OIDCAuthorizationURL builds the OIDC authorization URL with PKCE parameters.
+// The caller must store the code_verifier and use it in the token exchange.
+// The state parameter should be a cryptographically random value to prevent CSRF.
+func OIDCAuthorizationURL(authURL, clientID, redirectURL, state, codeVerifier string) (*url.URL, error) {
+	base, err := url.Parse(authURL)
+	if err != nil {
+		return nil, fmt.Errorf("identity: parse auth_url: %w", err)
+	}
+
+	params := url.Values{}
+	params.Set("client_id", clientID)
+	params.Set("response_type", "code")
+	params.Set("redirect_uri", redirectURL)
+	params.Set("scope", "openid profile email")
+	params.Set("state", state)
+	params.Set("code_challenge", codeVerifier)
+	params.Set("code_challenge_method", "S256")
+
+	base.RawQuery = params.Encode()
+	return base, nil
 }

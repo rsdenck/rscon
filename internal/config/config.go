@@ -151,12 +151,13 @@ type HostKeyConfig struct {
 
 // RecordingConfig configures terminal capture.
 type RecordingConfig struct {
-	Enabled      bool     `yaml:"enabled"`
-	FailClosed   bool     `yaml:"fail_closed"`
-	Backend      string   `yaml:"backend"`
-	Directory    string   `yaml:"directory"`
-	Retention    Duration `yaml:"retention"`
-	MaxFileBytes int64    `yaml:"max_file_bytes"`
+	Enabled          bool     `yaml:"enabled"`
+	FailClosed       bool     `yaml:"fail_closed"`
+	Backend          string   `yaml:"backend"`
+	Directory        string   `yaml:"directory"`
+	BucketName       string   `yaml:"bucket_name"`
+	Retention        Duration `yaml:"retention"`
+	MaxFileBytes     int64    `yaml:"max_file_bytes"`
 }
 
 // AuditConfig configures audit fan-out.
@@ -481,11 +482,14 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Recording.Enabled {
-		if c.Recording.Backend != "filesystem" {
-			add("recording.backend must be filesystem (the only implemented backend)")
+		if c.Recording.Backend != "filesystem" && c.Recording.Backend != "s3" {
+			add("recording.backend must be filesystem or s3")
 		}
-		if c.Recording.Directory == "" {
-			add("recording.directory is required when recording is enabled")
+		if c.Recording.Directory == "" && c.Recording.Backend == "filesystem" {
+			add("recording.directory is required when recording is enabled and backend is filesystem")
+		}
+		if c.Recording.Backend == "s3" && c.Recording.BucketName == "" {
+			add("recording.bucket_name is required when recording backend is s3")
 		}
 		if c.Recording.MaxFileBytes < 1<<20 {
 			add("recording.max_file_bytes must be >= 1 MiB")

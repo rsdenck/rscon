@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { api, ApiError, duration, formatDate } from './api'
+import { Terminal } from './Terminal/Terminal'
 import type {
   AccessRequest,
   AuditEvent,
@@ -81,7 +82,10 @@ export default function App() {
 
   useEffect(() => {
     void loadSession()
-    const onHash = () => setPage(window.location.hash.slice(1) || 'dashboard')
+    const onHash = () => {
+      const hash = window.location.hash.slice(1) || 'dashboard'
+      setPage(hash)
+    }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [loadSession])
@@ -153,11 +157,12 @@ export default function App() {
           {page === 'servers' && <ServersPage can={can} notify={notify} />}
           {page === 'access' && <AccessPage me={session.user} can={can} notify={notify} />}
           {page === 'sessions' && <SessionsPage can={can} notify={notify} />}
+          {page.startsWith('terminal/') && <Terminal sessionId={page.replace('terminal/', '')} />}
           {page === 'audit' && <AuditPage notify={notify} />}
           {page === 'policies' && <PoliciesPage can={can} notify={notify} />}
           {page === 'users' && <UsersPage can={can} notify={notify} />}
           {page === 'tokens' && <TokensPage notify={notify} />}
-          {!nav.some((item) => item.key === page) && <div className="text-slate-400">Unknown page.</div>}
+          {nav.some((item) => item.key === page) ? null : page.startsWith('terminal/') ? null : <div className="text-slate-400">Unknown page.</div>}
         </div>
       </main>
       {toast && (
@@ -179,6 +184,7 @@ function Login({ onSuccess, notify, toast }: { onSuccess: () => Promise<void>; n
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [usingOIDC, setUsingOIDC] = useState(false)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -193,6 +199,19 @@ function Login({ onSuccess, notify, toast }: { onSuccess: () => Promise<void>; n
       notify(err instanceof Error ? err.message : 'login failed', 'error')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const handleOIDCLogin = async () => {
+    setUsingOIDC(true)
+    try {
+      await api('/api/v1/auth/oidc/login', {
+        method: 'GET',
+      })
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'OIDC login failed', 'error')
+    } finally {
+      setUsingOIDC(false)
     }
   }
 
@@ -238,10 +257,19 @@ function Login({ onSuccess, notify, toast }: { onSuccess: () => Promise<void>; n
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        <p className="mt-6 text-xs leading-relaxed text-slate-500">
-          Local password authentication is the only authenticator in this build. SSO, LDAP and MFA are not yet
-          implemented.
+        {usingOIDC && <p className="mt-2 text-xs text-slate-500">Redirecting to OIDC provider…</p>}
+        <p className="mt-2 text-sm text-slate-500">
+          {usingOIDC ? 'OIDC login in progress' : 'Local password authentication is the only authenticator in this build. SSO, LDAP and MFA are not yet implemented.'}
         </p>
+        {!usingOIDC && (
+          <button
+            className="mt-2 w-full secondary-btn"
+            onClick={handleOIDCLogin}
+            disabled={busy}
+          >
+            Sign in with OIDC
+          </button>
+        )}
         {toast?.kind === 'error' && <p className="mt-3 text-sm text-red-300">{toast.message}</p>}
       </div>
     </div>
@@ -808,6 +836,11 @@ function SessionsPage({ can, notify }: { can: (action: string) => boolean; notif
     }
   }
 
+  const openTerminal = (sessionId: string) => {
+    window.location.hash = `terminal/${sessionId}`
+    notify('Terminal opened')
+  }
+
   return (
     <div className="space-y-4">
       <select className="input max-w-xs" value={status} onChange={(event) => setStatus(event.target.value)}>
@@ -857,6 +890,14 @@ function SessionsPage({ can, notify }: { can: (action: string) => boolean; notif
                     >
                       Recording
                     </a>
+                  )}
+                  {session.status === 'active' && can('session.terminal') && (
+                    <button
+                      className="text-emerald-300 hover:underline"
+                      onClick={() => void openTerminal(session.id)}
+                    >
+                      Terminal
+                    </button>
                   )}
                 </td>
               </tr>

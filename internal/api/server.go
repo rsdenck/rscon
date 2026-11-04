@@ -43,6 +43,13 @@ type Config struct {
 	CORSOrigins        []string
 	AllowSelfApproval  bool
 	SecureCookies      bool
+	OIDCClientID       string
+	OIDCClientSecret   string
+	OIDCAuthURL        string
+	OIDCTokenURL       string
+	OIDCUserInfoURL    string
+	OIDCRedirectURL    string
+	InsecureSkipVerify bool
 }
 
 // Gateway is the local SSH data plane, if the daemon hosts one.
@@ -216,6 +223,9 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/auth/session", s.currentSession)
 	mux.HandleFunc("POST /api/v1/auth/logout", s.logout)
 
+	mux.HandleFunc("GET /api/v1/auth/oidc/login", s.oidcLogin)
+	mux.HandleFunc("GET /api/v1/auth/oidc/callback", s.oidcCallback)
+
 	mux.HandleFunc("GET /api/v1/me", s.protected("", s.me))
 	mux.HandleFunc("GET /api/v1/dashboard", s.protected("", s.dashboard))
 
@@ -282,6 +292,9 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/sessions/{id}", s.protected(authz.ActionSessionRead, s.getSession))
 	mux.HandleFunc("POST /api/v1/sessions/{id}/terminate", s.protected(authz.ActionSessionTerminate, s.terminateSession))
 	mux.HandleFunc("GET /api/v1/sessions/{id}/recording", s.protected(authz.ActionRecordingRead, s.downloadRecording))
+
+	// WebSocket endpoint for real-time SSH terminal output streaming
+	mux.HandleFunc("GET /ws/session/{id}", s.terminalWS)
 
 	mux.HandleFunc("GET /api/v1/audit", s.protected(authz.ActionAuditRead, s.listAudit))
 	mux.HandleFunc("GET /api/v1/audit/verify", s.protected(authz.ActionAuditRead, s.verifyAudit))
