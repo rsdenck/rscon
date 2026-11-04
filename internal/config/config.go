@@ -184,6 +184,7 @@ type APIConfig struct {
 
 // SecurityConfig holds global security switches that must not be weakened.
 type SecurityConfig struct {
+	OIDC      OIDCConfig      `yaml:"oidc"`
 	DefaultDeny       bool `yaml:"default_deny"`
 	AllowSelfApproval bool `yaml:"allow_self_approval"`
 }
@@ -195,6 +196,27 @@ type LogConfig struct {
 }
 
 // DevConfig contains explicitly unsafe development-only switches.
+type OIDCConfig struct {
+	ClientID       string `yaml:"client_id"` 
+	ClientIDEnv    string `yaml:"-"` 
+	ClientSecret   string `yaml:"client_secret"` 
+	ClientSecretEnv string `yaml:"-"` 
+	AuthURL        string `yaml:"auth_url"` 
+	AuthURLEnv     string `yaml:"-"` 
+	TokenURL       string `yaml:"token_url"` 
+	TokenURLEnv    string `yaml:"-"` 
+	UserInfoURL    string `yaml:"user_info_url"` 
+	UserInfoURLEnv string `yaml:"-"` 
+	RedirectURL    string `yaml:"redirect_url"` 
+	RedirectURLEnv string `yaml:"-"` 
+	InsecureSkip   bool   `yaml:"insecure_skip"` 
+	InsecureSkipExtra bool `yaml:"-"` 
+	Scopes         string `yaml:"scopes"` 
+	ScopesEnv      string `yaml:"-"` 
+	ProviderName   string `yaml:"provider_name"` 
+	ProviderNameEnv string `yaml:"-"`
+}
+
 type DevConfig struct {
 	InsecureFileCA bool   `yaml:"insecure_file_ca"`
 	FileCAKeyFile  string `yaml:"file_ca_key_file"`

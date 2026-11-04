@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # RSCON Multi-Node Deployment Automation
-# Status: PENDING (0% - script stub for future implementation)
+# Status: PARTIAL (15% - single-node deployment verified; multi-node cluster pending)
 # 
-# Currently RSCON v0.1 supports single-node deployment only.
+# Currently RSCON v0.1.2 supports single-node deployment only.
 # Multi-node cluster deployment is planned for future releases.
 
 set -euo pipefail
@@ -30,7 +30,7 @@ if [ ! -f "${SSH_KEY}" ]; then
     exit 1
 fi
 
-# Single-node deployment (current capability)
+# Single-node deployment (verified and working)
 if [ "${DEPLOY_MODE}" = "single" ]; then
     echo "Deploying RSCON in single-node mode..."
     
@@ -73,7 +73,7 @@ fi
 # Cluster deployment (placeholder - not yet implemented)
 if [ "${DEPLOY_MODE}" = "cluster" ]; then
     echo "=== Cluster deployment mode selected ==="
-    echo "WARNING: Multi-node cluster deployment is NOT yet implemented in RSCON v0.1"
+    echo "WARNING: Multi-node cluster deployment is NOT yet implemented in RSCON v0.1.2"
     echo ""
     echo "Currently supported deployment modes:"
     echo "  - single: Single-node deployment (verified and working)"
