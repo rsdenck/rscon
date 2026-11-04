@@ -1,0 +1,51 @@
+# Binaries
+rscond
+rscon
+
+# Go build artifacts
+*.exec
+*.exe
+
+# go.sum
+go.sum
+
+# Node modules
+web/node_modules
+web/package-lock.json
+
+# Vite/build artifacts
+web/dist
+web/.vite
+web/tsconfig.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env*
+
+# Binary releases
+RELEASE.md
+
+# Temporary test files
+END_TO_END_TEST.md
+
+# GitHub Actions
+/.github/workflows/
+
+# PostgreSQL data
+pgdata/
+
+# Audit/recording data
+var/lib/rscon/recordings/
+var/log/rscond.log
+
+# Backup files
+*~
+*.bak
+
+# Generated documentation
+docs/generated/
